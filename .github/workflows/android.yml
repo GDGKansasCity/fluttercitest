@@ -1,0 +1,45 @@
+name: Build and Release Android
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore: [ 'ios/**', 'test/**', '.github/workflows/ios.yml' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '12.x'
+      - uses: subosito/flutter-action@v1
+        with:
+          channel: 'stable'
+      - name: Setup signing
+        run: |
+          echo "${{ secrets.ANDROID_KEY_PROPERTIES }}" > android/key.properties
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+      - name: flutter build
+        id: build
+        run: |
+          flutter pub get
+          flutter build appbundle --build-number=`git rev-list --count HEAD`
+          bundlePath="$(pwd)/build/app/outputs/bundle/release/app-release.aab"
+          echo "::set-output name=bundlePath::$bundlePath"
+      - uses: actions/upload-artifact@v2
+        with: 
+          path: ${{ steps.build.outputs.bundlePath }}
+          name: app-release.aab
+
+      # Only works if the app has been released to a track other than internal. Closed testing with no testers is fine.
+      - name: Upload to Play Store
+        uses: r0adkll/upload-google-play@v1.0.15
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_UPLOAD_SERVICE_ACCOUNT_JSON }}
+          packageName: com.gdgkansascity.flutter_ci
+          releaseFiles: ${{ steps.build.outputs.bundlePath }}
+          track: internal
