@@ -41,5 +41,5 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_UPLOAD_SERVICE_ACCOUNT_JSON }}
           packageName: org.gdgkc.flutterci
-          releaseFiles: "${{ steps.build.outputs.bundlePath }}"
+          releaseFiles: ${{ steps.build.outputs.bundlePath }}
           track: internal
